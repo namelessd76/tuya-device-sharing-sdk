@@ -137,15 +137,17 @@ class Manager:
         except Exception as e:
             logger.error("on message error = %s", e)
 
-    def __update_device(self, device: CustomerDevice):
+    def __update_device(self, device: CustomerDevice, updated_status_properties: list[str] | None = None):
         for listener in self.device_listeners:
-            listener.update_device(device)
+            listener.update_device(device, updated_status_properties)
 
     def _on_device_report(self, device_id: str, status: list):
         device = self.device_map.get(device_id, None)
         if not device:
             return
         logger.debug(f"mq _on_device_report-> {status}")
+        updated_status_properties = []
+        value = None
         if device.support_local:
             for item in status:
                 if "dpId" in item and "value" in item:
@@ -158,14 +160,16 @@ class Manager:
                     code, value = strategy.convert(strategy_name, dp_item, config_item)
                     logger.debug(f"mq _on_device_report after strategy convert code={code},value={value}")
                     device.status[code] = value
+                    updated_status_properties.append(code)
         else:
             for item in status:
                 if "code" in item and "value" in item:
                     code = item["code"]
                     value = item["value"]
                     device.status[code] = value
+                    updated_status_properties.append(code)
 
-        self.__update_device(device)
+        self.__update_device(device, updated_status_properties)
 
     def _on_device_other(self, device_id: str, biz_code: str, data: dict[str, Any]):
         logger.debug(f"mq _on_device_other-> {device_id} -- {biz_code}")
@@ -222,7 +226,7 @@ class SharingDeviceListener(metaclass=ABCMeta):
     """Sharing device listener."""
 
     @abstractclassmethod
-    def update_device(self, device: CustomerDevice):
+    def update_device(self, device: CustomerDevice, updated_status_properties: list[str] | None = None):
         """Update device info.
 
         Args:
