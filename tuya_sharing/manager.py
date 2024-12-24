@@ -151,16 +151,19 @@ class Manager:
         if device.support_local:
             for item in status:
                 if "dpId" in item and "value" in item:
-                    dp_id_item = device.local_strategy[item["dpId"]]
-                    strategy_name = dp_id_item["value_convert"]
-                    config_item = dp_id_item["config_item"]
-                    dp_item = (dp_id_item["status_code"], item["value"])
-                    logger.debug(
-                        f"mq _on_device_report before strategy convert strategy_name={strategy_name},dp_item={dp_item},config_item={config_item}")
-                    code, value = strategy.convert(strategy_name, dp_item, config_item)
-                    logger.debug(f"mq _on_device_report after strategy convert code={code},value={value}")
-                    device.status[code] = value
-                    updated_status_properties.append(code)
+                    try:
+                        dp_id_item = device.local_strategy[item["dpId"]]
+                        strategy_name = dp_id_item["value_convert"]
+                        config_item = dp_id_item["config_item"]
+                        dp_item = (dp_id_item["status_code"], item["value"])
+                        logger.debug(
+                            f"mq _on_device_report before strategy convert strategy_name={strategy_name},dp_item={dp_item},config_item={config_item}")
+                        code, value = strategy.convert(strategy_name, dp_item, config_item)
+                        logger.debug(f"mq _on_device_report after strategy convert code={code},value={value}")
+                        device.status[code] = value
+                        updated_status_properties.append(code)
+                    except Exception as e:
+                        logger.error(f"mq _on_device_report exception {e}. No local strategy for {item['dpId']}?")
         else:
             for item in status:
                 if "code" in item and "value" in item:
